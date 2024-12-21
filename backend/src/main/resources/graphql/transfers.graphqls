@@ -1,0 +1,42 @@
+# Transfer related enums
+enum TransferStatus {
+    PENDING
+    DEBITED
+    COMPLETED
+    FAILED
+    COMPENSATED
+}
+
+# Transfer related types
+type Transfer {
+    id: ID!
+    sourceAccountId: ID!
+    targetAccountId: ID!
+    amount: BigDecimal!
+    currency: String!
+    status: TransferStatus!
+    description: String!
+    requestedAt: DateTime!
+    completedAt: DateTime
+}
+
+# Input types for mutations
+input CreateTransferInput {
+    sourceAccountId: ID!
+    targetAccountId: ID!
+    amount: BigDecimal!
+    currency: String!
+    description: String!
+}
+
+# Queries
+extend type Query {
+    transfer(id: ID!): Transfer!
+    transfers: [Transfer!]!
+}
+
+# Mutations
+extend type Mutation {
+    createTransfer(command: CreateTransferInput!): Transfer!
+    completeTransfer(id: ID!): Transfer!
+}

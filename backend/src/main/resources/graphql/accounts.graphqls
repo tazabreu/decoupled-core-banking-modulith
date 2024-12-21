@@ -1,0 +1,44 @@
+# src/main/resources/graphql/accounts.graphql
+
+type Query {
+    account(id: UUID!): Account
+    accounts: [Account!]!
+}
+
+type Mutation {
+    createAccount(command: CreateAccountInput!): Account!
+    activateAccount(id: ID!): Account!
+}
+
+type Account {
+    id: UUID!
+    accountNumber: String!
+    documentNumber: String!
+    holderName: String!
+    type: AccountType!
+    status: AccountStatus!
+    balance: BigDecimal!
+    currency: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+input CreateAccountInput {
+    documentNumber: String!
+    holderName: String!
+    type: AccountType!
+    currency: String!
+}
+
+enum AccountType {
+    CHECKING
+    SAVINGS
+    INVESTMENT
+}
+
+enum AccountStatus {
+    PENDING_ACTIVATION
+    ACTIVE
+    BLOCKED
+    CLOSED
+}

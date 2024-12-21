@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: decoupled-core-banking-modulith
+
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+    password: c0r3b4nk1ng
+    url: jdbc:postgresql://localhost:5432/corebanking
+    username: corebanking_app
+
+  graphql:
+    graphiql:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
+      republish-outstanding-events-on-restart: true
+
+  threads:
+    virtual:
+      enabled: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,flyway
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      transfer-processing:
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        failureRateThreshold: 50
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
+  retry:
+    instances:
+      transfer-processing:
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        maxAttempts: 3
+        retryExceptions:
+          - java.lang.RuntimeException
+        waitDuration: 1s
+
+server:
+  port: 8080
+  shutdown: graceful

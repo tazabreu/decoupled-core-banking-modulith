@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # Core Database
+  corebanking-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: corebanking
+      POSTGRES_USER: corebanking_app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-c0r3b4nk1ng}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corebanking_app -d corebanking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - corebanking-data:/var/lib/postgresql/data
+    command: >
+      postgres 
+      -c wal_level=logical
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+
+  # Vector Database for AI Features
+  embeddings-db:
+    image: ankane/pgvector:v0.5.1
+    environment:
+      POSTGRES_DB: embeddings
+      POSTGRES_USER: embeddings_app
+      POSTGRES_PASSWORD: ${VECTOR_DB_PASSWORD:-3mb3dd1ngs}
+    ports:
+      - "5433:5432"
+    volumes:
+      - embeddings-data:/var/lib/postgresql/data
+
+  # Event Streaming Platform
+  redpanda:
+    image: redpandadata/redpanda:v23.2.16
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr internal://redpanda:29092,external://localhost:9092
+      - --pandaproxy-addr internal://0.0.0.0:28082,external://0.0.0.0:8082
+      - --advertise-pandaproxy-addr internal://redpanda:28082,external://localhost:8082
+      - --schema-registry-addr internal://0.0.0.0:28081,external://0.0.0.0:8081
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+
+  redpanda-console:
+    image: redpandadata/console:v2.3.1
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    depends_on:
+      - redpanda
+
+  # Real-time Messaging
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["--jetstream", "--http_port", "8222"]
+
+  # Feature Store & Cache
+  redis-stack:
+    image: redis/redis-stack:7.2.0-v6
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    volumes:
+      - redis-data:/data
+
+ # Change Data Capture
+  debezium:
+    image: debezium/connect:2.5
+    restart: unless-stopped
+    environment:
+      GROUP_ID: 'corebanking'
+      BOOTSTRAP_SERVERS: 'redpanda:29092'
+      CONFIG_STORAGE_TOPIC: 'connect_configs'
+      OFFSET_STORAGE_TOPIC: 'connect_offsets'
+      STATUS_STORAGE_TOPIC: 'connect_statuses'
+      KEY_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+      VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    depends_on:
+      - redpanda
+      - corebanking-db
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Observability Stack
+  grafana-otel-stack:
+    image: grafana/otel-lgtm:0.8.1
+    ports:
+      - "3000:3000"   # Grafana
+      - "3100:3100"   # Loki
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "9090:9090"   # Prometheus
+    environment:
+      - GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-0p3nt3l3m3try}
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  corebanking-data:
+  embeddings-data:
+  redis-data:
+  grafana-data:

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Core Banking Closing Times</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+        #chartContainer {
+            width: 90%;
+            height: 550px;
+            margin: 50px auto;
+            border: 1px solid #ddd;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .legend-box{
+            border: 1px solid black;
+            margin-right: 5px;
+            width: 20px;
+            height: 10px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1 style="text-align: center; color: #4682B4;">Core Banking Closing Times Comparison</h1>
+    <div style="display: flex; justify-content: center; align-items: center; margin-top: 10px;">
+        <div class="legend-box" style="background-color: #ADD8E6;"></div>
+        <p style="margin-right: 20px;">The Month Before</p>
+        <div class="legend-box" style="background-color: #87CEEB;"></div>
+        <p>Running 30 Days</p>
+    </div>
+    <div id="chartContainer">
+        <canvas id="closingTimesChart"></canvas>
+    </div>
+
+    <script>
+        function generateData() {
+            const data = {
+                'The Month Before': [],
+                'Running 30 Days': []
+            };
+
+            for (let i = 0; i < 30; i++) {
+                // Weekend simulation (every 7 days, 2 consecutive days are zero)
+                if ((i + 1) % 7 === 0 || (i + 2) % 7 === 0) {
+                    data['The Month Before'].push(0);
+                    data['Running 30 Days'].push(0);
+                } else {
+                    // Base values with fluctuations
+                    const baseValueMonthBefore = 3 + Math.random() * 1.5; // Between 3 and 4.5
+                    const baseValueRunning30 = 3.5 + Math.random() * 1.5; // Between 3.5 and 5
+
+                    // Ensure "Running 30 Days" generally has higher times
+                    const finalValueRunning30 = baseValueRunning30 + Math.random() * 1;
+
+                    data['The Month Before'].push(baseValueMonthBefore);
+                    data['Running 30 Days'].push(finalValueRunning30);
+                }
+            }
+
+            return data;
+        }
+
+        const data = generateData();
+        const labels = Array.from({ length: 30 }, (_, i) => i + 1); // Days 1 to 30
+
+        const datasets = [
+            {
+                label: 'The Month Before',
+                data: data['The Month Before'],
+                borderColor: '#ADD8E6',
+                backgroundColor: 'rgba(173, 216, 230, 0.4)', // Lighter fill
+                fill: true,
+                tension: 0.4
+            },
+            {
+                label: 'Running 30 Days',
+                data: data['Running 30 Days'],
+                borderColor: '#87CEEB',
+                backgroundColor: 'rgba(135, 206, 235, 0.4)', // Lighter fill
+                fill: true,
+                tension: 0.4
+            }
+        ];
+
+        const ctx = document.getElementById('closingTimesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                plugins: {
+                    filler: {
+                        propagate: true // Fill extends to the edge of the chart
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Closing Time (Hours)'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Day of the Month'
+                        },
+                        ticks:{
+                            autoSkip: false
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        left: 20,
+                        right: 20,
+                        top: 20,
+                        bottom: 20
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
