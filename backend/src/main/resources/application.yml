@@ -33,11 +33,24 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 2000
+      connect-timeout: 2000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: 1000ms
+        shutdown-timeout: 100ms
 
 logging:
   pattern:
-    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
-
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) [%green(${spring.application.name:})] [%thread] [%green(%X{traceId:-}, %X{spanId:-})] %blue(%-40.40logger{39}) : %msg%n"
 management:
   endpoint:
     health:
@@ -47,22 +60,41 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,metrics,prometheus,flyway
+        include: "health,metrics,prometheus,flyway"
   metrics:
+    export:
+      otlp:
+        enabled: true
+        endpoint: http://localhost:4318/v1/metrics
     tags:
       application: ${spring.application.name}
   tracing:
     sampling:
       probability: 1.0
+    baggage:
+      correlation:
+        enabled: true
 
-otel:
-  exporter:
-    otlp:
-      endpoint: http://localhost:4317
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        step: 10s
+#        url: http://localhost:4317
+        url: http://localhost:4318/v1/metrics
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
 
 resilience4j:
   circuitbreaker:
     instances:
+      queue-operation:
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        failureRateThreshold: 50
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
       transfer-processing:
         automaticTransitionFromOpenToHalfOpenEnabled: true
         failureRateThreshold: 50
@@ -72,6 +104,13 @@ resilience4j:
         waitDurationInOpenState: 10s
   retry:
     instances:
+      queue-operation:
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        maxAttempts: 3
+        retryExceptions:
+          - java.lang.RuntimeException
+        waitDuration: 1s
       transfer-processing:
         enableExponentialBackoff: true
         exponentialBackoffMultiplier: 2
@@ -79,7 +118,27 @@ resilience4j:
         retryExceptions:
           - java.lang.RuntimeException
         waitDuration: 1s
+  bulkhead:
+    instances:
+      batch-processing:
+        maxConcurrentCalls: 2
+        maxWaitDuration: 1s
+  timelimiter:
+    instances:
+      batch-processing:
+        timeoutDuration: 5s
+        cancelRunningFuture: true
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   shutdown: graceful
+
+
+service:
+  max:
+    batch:
+      size: 10
+      wait:
+        time: 1000
+  lock:
+    timeout: 30
