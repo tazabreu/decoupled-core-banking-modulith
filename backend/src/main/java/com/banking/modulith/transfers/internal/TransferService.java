@@ -59,8 +59,6 @@ public class TransferService {
         if (command.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Transfer amount must be positive");
         }
-
-        // Validate source account has sufficient funds
         if (!accountOperations.validateBalance(command.sourceAccountId(), command.amount(), command.currency())) {
             throw new IllegalStateException("Insufficient funds or invalid source account");
         }
