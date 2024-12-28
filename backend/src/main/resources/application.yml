@@ -61,29 +61,33 @@ management:
     web:
       exposure:
         include: "health,metrics,prometheus,flyway"
-  metrics:
-    export:
-      otlp:
-        enabled: true
-        endpoint: http://localhost:4318/v1/metrics
-    tags:
-      application: ${spring.application.name}
   tracing:
     sampling:
       probability: 1.0
     baggage:
       correlation:
         enabled: true
-
   otlp:
     metrics:
       export:
         enabled: true
         step: 10s
-#        url: http://localhost:4317
         url: http://localhost:4318/v1/metrics
     tracing:
       endpoint: http://localhost:4318/v1/traces
+      compression: gzip
+    logging:
+      export:
+        enabled: true
+      endpoint: http://localhost:4318/v1/logs
+      compression: gzip
+
+otel:
+  instrumentation:
+    jdbc:
+      enabled: false
+    micrometer:
+      enabled: true
 
 resilience4j:
   circuitbreaker:
